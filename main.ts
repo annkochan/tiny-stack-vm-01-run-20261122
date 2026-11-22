@@ -160,10 +160,25 @@ function run(p: Uint8Array, inp: Uint8Array): { out: Uint8Array; code: number } 
         break;
       }
       case 0x50: {
-        const s = String(D[sp - 1]);
-        if (olen + s.length > 65536) return done(11);
+        // Decimal ASCII by hand: no String allocation, and the length is
+        // known before anything is written, as the output trap requires.
+        const v = D[sp - 1];
+        let n = v < 0 ? -v : v;
+        let len = v < 0 ? 1 : 0;
+        do {
+          len++;
+          n = Math.floor(n / 10);
+        } while (n > 0);
+        if (olen + len > 65536) return done(11);
         sp--;
-        for (let i = 0; i < s.length; i++) out[olen++] = s.charCodeAt(i);
+        let end = olen + len;
+        n = v < 0 ? -v : v;
+        do {
+          out[--end] = 48 + (n % 10);
+          n = Math.floor(n / 10);
+        } while (n > 0);
+        if (v < 0) out[end - 1] = 45;
+        olen += len;
         break;
       }
       case 0x51:
